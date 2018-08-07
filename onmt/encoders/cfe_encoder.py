@@ -104,7 +104,7 @@ class CFEEncoder(EncoderBase):
     def forward(self, src, lengths=None):
         self._check_args(src, lengths)  # src l x b x v
 
-        emb = self.embeddings(input)
+        emb = self.embeddings(src)
         # s_len, batch, emb_dim = emb.size()
 
         emb = emb.transpose(0, 1).contiguous()
