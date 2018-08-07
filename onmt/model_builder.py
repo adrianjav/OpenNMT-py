@@ -80,7 +80,7 @@ def build_encoder(opt, embeddings):
         return MeanEncoder(opt.enc_layers, embeddings)
     elif opt.encoder_type == "cfe":
         return CFEEncoder(opt.receptive_field, opt.rnn_size,
-                          opt.cnn_kernel_width, opt.dec_layers,  # TODO only works for lstm decoders
+                          opt.cnn_kernel_width, opt.enc_layers,  # TODO only works for lstm decoders
                           opt.dropout, embeddings)
     else:
         # "rnn" or "brnn"

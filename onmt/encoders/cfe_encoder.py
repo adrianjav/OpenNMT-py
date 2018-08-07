@@ -29,8 +29,8 @@ class InitialWeights(nn.Module):
 
     def forward(self, feats):
         feats = self.pool(feats).squeeze(1)
-        out = self.net(feats).chunk(2, dim=1)
-        out = [x.chunk(self.lstm_layers, dim=1) for x in out]
+        out = self.net(feats).chunk(2, dim=2)
+        out = tuple(x.view(feats.size()[0], self.lstm_layers, -1).transpose(0,1).contiguous() for x in out)
         return out
 
 
@@ -99,7 +99,7 @@ class CFEEncoder(EncoderBase):
         self.linear = nn.Linear(input_size, hidden_size)
 
         self.cfe = CausalFeatureExtractor(input_size, hidden_size, kernel_width, receptive_field, dropout)
-        self.init_decoder = InitialWeights(hidden_size, 256, rnn_layers)  # TODO not hardcoded parameter
+        self.init_decoder = InitialWeights(hidden_size, 256, rnn_layers)  # TODO not hardcode the parameters
 
     def forward(self, src, lengths=None):
         self._check_args(src, lengths)  # src l x b x v
@@ -108,8 +108,8 @@ class CFEEncoder(EncoderBase):
         # s_len, batch, emb_dim = emb.size()
 
         emb = emb.transpose(0, 1).contiguous()
-        emb_remap = self.linear(emb).transpose(1,2).unsqueeze(2)
+        emb_remap = self.linear(emb).transpose(1,2)
         out = self.cfe(emb_remap)
 
-        return self.init_decoder(emb_remap), \
-               out.squeeze(2).transpose(0, 1).transpose(1,2).contiguous()
+        return self.init_decoder(out.unsqueeze(1)), \
+               out.squeeze(2).transpose(1,2).transpose(0,1).contiguous()
