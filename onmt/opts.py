@@ -54,10 +54,10 @@ def model_opts(parser):
                        Options are [text|img|audio].""")
 
     group.add_argument('-encoder_type', type=str, default='rnn',
-                       choices=['rnn', 'brnn', 'mean', 'transformer', 'cnn'],
+                       choices=['rnn', 'brnn', 'mean', 'transformer', 'cnn', 'cfe'],
                        help="""Type of encoder layer to use. Non-RNN layers
                        are experimental. Options are
-                       [rnn|brnn|mean|transformer|cnn].""")
+                       [rnn|brnn|mean|transformer|cnn|cfe].""")
     group.add_argument('-decoder_type', type=str, default='rnn',
                        choices=['rnn', 'transformer', 'cnn'],
                        help="""Type of decoder layer to use. Non-RNN layers
@@ -75,6 +75,9 @@ def model_opts(parser):
     group.add_argument('-cnn_kernel_width', type=int, default=3,
                        help="""Size of windows in the cnn, the kernel_size is
                        (cnn_kernel_width, 1) in conv layer""")
+
+    group.add_argument('-receptive_field', type=int, default=20,  # TODO improve the argument system
+                       help='Receptive field the CFE should consider')
 
     group.add_argument('-input_feed', type=int, default=1,
                        help="""Feed the context vector at each time step as

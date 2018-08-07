@@ -91,7 +91,7 @@ class CausalFeatureExtractor(nn.Module):
 
 
 class CFEEncoder(EncoderBase):
-    def __init__(self, hidden_size, kernel_width, receptive_field, rnn_layers, embeddings, dropout):
+    def __init__(self, receptive_field, hidden_size, kernel_width, rnn_layers, dropout, embeddings):
         super(CFEEncoder, self).__init__()
         input_size = embeddings.embedding_size
 
