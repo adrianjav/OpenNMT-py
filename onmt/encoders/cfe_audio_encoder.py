@@ -36,5 +36,6 @@ class CFEAudioEncoder(nn.Module):
         length = src.size(3)
         src = src.view(batch_size, -1, length)
         output = self.cfe(src)
+        output = output.transpose(1,2).transpose(0,1).contiguous()
 
         return hidden, output
