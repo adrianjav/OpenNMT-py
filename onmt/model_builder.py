@@ -16,6 +16,7 @@ from onmt.encoders.mean_encoder import MeanEncoder
 from onmt.encoders.audio_encoder import AudioEncoder
 from onmt.encoders.image_encoder import ImageEncoder
 from onmt.encoders.cfe_encoder import CFEEncoder
+from onmt.encoders.cfe_audio_encoder import CFEAudioEncoder
 
 from onmt.decoders.decoder import InputFeedRNNDecoder, StdRNNDecoder
 from onmt.decoders.transformer import TransformerDecoder
@@ -172,12 +173,21 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None):
                                model_opt.rnn_size,
                                model_opt.dropout)
     elif model_opt.model_type == "audio":
-        encoder = AudioEncoder(model_opt.enc_layers,
-                               model_opt.brnn,
-                               model_opt.rnn_size,
-                               model_opt.dropout,
-                               model_opt.sample_rate,
-                               model_opt.window_size)
+        if model_opt.encoder_type == "cfe":
+            encoder = CFEAudioEncoder(model_opt.receptive_field,
+                                      model_opt.rnn_size,
+                                      model_opt.cnn_kernel_width,
+                                      model_opt.enc_layers,
+                                      model_opt.dropout,
+                                      model_opt.sample_rate,
+                                      model_opt.window_size)
+        else:
+            encoder = AudioEncoder(model_opt.enc_layers,
+                                   model_opt.brnn,
+                                   model_opt.rnn_size,
+                                   model_opt.dropout,
+                                   model_opt.sample_rate,
+                                   model_opt.window_size)
 
     # Build decoder.
     tgt_dict = fields["tgt"].vocab
