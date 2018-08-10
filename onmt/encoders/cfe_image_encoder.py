@@ -32,7 +32,7 @@ class CausalConv2d(nn.Module):
 
         num_layers = max(1, int(math.ceil(math.log2(receptive_field / (kernel_size - 1) + 1) - 1)))
         layers = [
-            weight_norm(MaskedConv2d(right, input_size, feats_size, kernel_size=kernel_size, padding=kernel_size - 1))
+            weight_norm(MaskedConv2d(right, input_size, feats_size, kernel_size=kernel_size, padding=(kernel_size - 1)//2))
         ]
 
         for i in range(1, num_layers):
@@ -47,7 +47,7 @@ class CausalConv2d(nn.Module):
         reset_parameters(self, 'conv2d')
 
     def forward(self, input):
-        return self.net(input.unsqueeze(dim=1)).squeeze(dim=2)
+        return self.net(input).squeeze(dim=2)
 
 
 class CausalFeatureExtractor(nn.Module):
@@ -61,12 +61,15 @@ class CausalFeatureExtractor(nn.Module):
         self.left = CausalConv2d(input_size, feats_size // 2, kernel_size, receptive_field, dropout, right=False)
 
     def forward(self, input):
-        return torch.cat((self.left(input), self.right(input)), dim=1)
+        out = torch.cat((self.left(input), self.right(input)), dim=1)
+        return out
 
 
 class CFEImageEncoder(nn.Module):
     def __init__(self, receptive_field, hidden_size, kernel_width, rnn_layers, dropout):
         super(CFEImageEncoder, self).__init__()
+        self.hidden_size = hidden_size
+
         self.layer1 = nn.Conv2d(3, 64, kernel_size=(3, 3),
                                 padding=(1, 1), stride=(1, 1))
         self.layer2 = nn.Conv2d(64, 128, kernel_size=(3, 3),
@@ -104,7 +107,9 @@ class CFEImageEncoder(nn.Module):
         src = F.relu(self.batch_norm3(self.layer6(src)), True)
         # (batch_size, 512, H, W)
 
-        output = self.cfe(src)
         hidden = self.init_decoder(src.view(batch_size, 1, 1, -1))
+        output = self.cfe(src)
+        output = output.view(batch_size, self.hidden_size, -1)
+        output = output.transpose(1,2).transpose(0,1).contiguous()
 
         return hidden, output
