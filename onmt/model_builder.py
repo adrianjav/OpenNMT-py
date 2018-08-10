@@ -17,6 +17,7 @@ from onmt.encoders.audio_encoder import AudioEncoder
 from onmt.encoders.image_encoder import ImageEncoder
 from onmt.encoders.cfe_encoder import CFEEncoder
 from onmt.encoders.cfe_audio_encoder import CFEAudioEncoder
+from onmt.encoders.cfe_image_encoder import CFEImageEncoder
 
 from onmt.decoders.decoder import InputFeedRNNDecoder, StdRNNDecoder
 from onmt.decoders.transformer import TransformerDecoder
@@ -168,7 +169,14 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None):
         src_embeddings = build_embeddings(model_opt, src_dict, feature_dicts)
         encoder = build_encoder(model_opt, src_embeddings)
     elif model_opt.model_type == "img":
-        encoder = ImageEncoder(model_opt.enc_layers,
+        if model_opt.encoder_type == "cfe":
+            encoder = CFEImageEncoder(model_opt.receptive_field,
+                                      model_opt.rnn_size,
+                                      model_opt.cnn_kernel_width,
+                                      model_opt.enc_layers,
+                                      model_opt.dropout)
+        else:
+            encoder = ImageEncoder(model_opt.enc_layers,
                                model_opt.brnn,
                                model_opt.rnn_size,
                                model_opt.dropout)
