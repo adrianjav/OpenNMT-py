@@ -107,7 +107,7 @@ class Trainer(object):
         # Set model in training mode.
         self.model.train()
 
-    def train(self, train_iter_fct, valid_iter_fct, train_steps, valid_steps):
+    def train(self, train_iter_fct, valid_iter_fct, train_steps, valid_steps, train_time):
         """
         The main training loops.
         by iterating over training data (i.e. `train_iter_fct`)
@@ -137,8 +137,7 @@ class Trainer(object):
         report_stats = onmt.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
-        while step <= train_steps:
-
+        while step <= train_steps and (train_time is None or total_stats.elapsed_time() <= train_time):
             reduce_counter = 0
             for i, batch in enumerate(train_iter):
                 if self.n_gpu == 0 or (i % self.n_gpu == self.gpu_rank):
@@ -182,7 +181,7 @@ class Trainer(object):
                         true_batchs = []
                         accum = 0
                         normalization = 0
-                        if (step % valid_steps == 0):
+                        if step % valid_steps == 0:
                             if self.gpu_verbose_level > 0:
                                 logger.info('GpuRank %d: validate step %d'
                                             % (self.gpu_rank, step))
@@ -201,12 +200,19 @@ class Trainer(object):
                         if self.gpu_rank == 0:
                             self._maybe_save(step)
                         step += 1
-                        if step > train_steps:
+                        if step > train_steps or (train_time is not None and total_stats.elapsed_time() > train_time):
                             break
             if self.gpu_verbose_level > 0:
                 logger.info('GpuRank %d: we completed an epoch \
                             at step %d' % (self.gpu_rank, step))
             train_iter = train_iter_fct()
+
+        print("Last-step validation:")
+        valid_iter = valid_iter_fct()
+        valid_stats = self.validate(valid_iter)
+        valid_stats = self._maybe_gather_stats(valid_stats)
+        self._report_step(self.optim.learning_rate,
+                          step, valid_stats=valid_stats)
 
         return total_stats
 

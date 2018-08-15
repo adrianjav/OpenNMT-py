@@ -358,6 +358,10 @@ def train_opts(parser):
                        Set to zero to turn off label smoothing.
                        For more detailed information, see:
                        https://arxiv.org/abs/1512.00567""")
+
+    group.add_argument('-train_time', type=int, default=None,
+                       help='Training time in seconds (default: undefined)')
+
     # learning rate
     group = parser.add_argument_group('Optimization- Rate')
     group.add_argument('-learning_rate', type=float, default=1.0,
