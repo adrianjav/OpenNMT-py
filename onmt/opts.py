@@ -380,7 +380,7 @@ def train_opts(parser):
                        help="""Decay every decay_steps""")
 
     group.add_argument('-decay_method', type=str, default="",
-                       choices=['noam'], help="Use a custom decay rate.")
+                       choices=['noam', ''], help="Use a custom decay rate.")
     group.add_argument('-warmup_steps', type=int, default=4000,
                        help="""Number of warmup steps for custom decay.""")
 

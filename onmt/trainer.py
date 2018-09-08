@@ -178,6 +178,9 @@ class Trainer(object):
                             self.optim.learning_rate,
                             report_stats)
 
+ #                       from onmt.encoders.mem_report import mem_report
+#                        mem_report()
+
                         true_batchs = []
                         accum = 0
                         normalization = 0
@@ -207,12 +210,13 @@ class Trainer(object):
                             at step %d' % (self.gpu_rank, step))
             train_iter = train_iter_fct()
 
-        print("Last-step validation:")
         valid_iter = valid_iter_fct()
         valid_stats = self.validate(valid_iter)
         valid_stats = self._maybe_gather_stats(valid_stats)
         self._report_step(self.optim.learning_rate,
                           step, valid_stats=valid_stats)
+
+        self.model_saver._save(train_steps)  # even though is not train_steps
 
         return total_stats
 

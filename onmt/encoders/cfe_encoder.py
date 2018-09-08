@@ -18,7 +18,6 @@ class InitialWeights(nn.Module):
         super(InitialWeights, self).__init__()
         self.lstm_layers = lstm_layers
 
-        self.pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         self.net = nn.Sequential(
             nn.Linear(1, num_linear_hidden), nn.LeakyReLU(),
             nn.Linear(num_linear_hidden, num_linear_hidden), nn.LeakyReLU(),
@@ -28,9 +27,10 @@ class InitialWeights(nn.Module):
         reset_parameters(self, 'leaky_relu')
 
     def forward(self, feats):
-        feats = self.pool(feats).squeeze(1)
+        batch_size = feats.size(0)
+        feats = feats.contiguous().view(batch_size, -1, 1, 1).mean(dim=1)
         out = self.net(feats).chunk(2, dim=2)
-        out = tuple(x.view(feats.size()[0], self.lstm_layers, -1).transpose(0,1).contiguous() for x in out)
+        out = tuple(x.view(batch_size, self.lstm_layers, -1).transpose(0,1).contiguous() for x in out)
         return out
 
 
@@ -98,7 +98,7 @@ class CFEEncoder(EncoderBase):
         self.embeddings = embeddings
         self.linear = nn.Linear(input_size, hidden_size)
 
-        self.cfe = CausalFeatureExtractor(input_size, hidden_size, kernel_width, receptive_field, dropout)
+        self.cfe = CausalFeatureExtractor(hidden_size, hidden_size, kernel_width, receptive_field, dropout)
         self.init_decoder = InitialWeights(hidden_size, 256, rnn_layers)  # TODO not hardcode the parameters
 
     def forward(self, src, lengths=None):
@@ -111,5 +111,5 @@ class CFEEncoder(EncoderBase):
         emb_remap = self.linear(emb).transpose(1,2)
         out = self.cfe(emb_remap)
 
-        return self.init_decoder(out.unsqueeze(1)), \
-               out.squeeze(2).transpose(1,2).transpose(0,1).contiguous()
+        return self.init_decoder(emb_remap.unsqueeze(1)), \
+               out.squeeze(1).transpose(1,2).transpose(0,1).contiguous()

@@ -107,7 +107,7 @@ class CFEImageEncoder(nn.Module):
         src = F.relu(self.batch_norm3(self.layer6(src)), True)
         # (batch_size, 512, H, W)
 
-        hidden = self.init_decoder(src.view(batch_size, 1, 1, -1))
+        hidden = self.init_decoder(src)
         output = self.cfe(src)
         output = output.view(batch_size, self.hidden_size, -1)
         output = output.transpose(1,2).transpose(0,1).contiguous()
