@@ -195,7 +195,8 @@ class Trainer(object):
               train_steps,
               save_checkpoint_steps=5000,
               valid_iter=None,
-              valid_steps=10000):
+              valid_steps=10000,
+              training_time=None):
         """
         The main training loop by iterating over `train_iter` and possibly
         running validation on `valid_iter`.
@@ -281,8 +282,17 @@ class Trainer(object):
             if train_steps > 0 and step >= train_steps:
                 break
 
+            if training_time is not None and total_stats.elapsed_time() > training_time:
+                break
+
+        valid_stats = self.validate(valid_iter)
+        valid_stats = self._maybe_gather_stats(valid_stats)
+        self._report_step(self.optim.learning_rate,
+                          step, valid_stats=valid_stats)
+
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
+
         return total_stats
 
     def validate(self, valid_iter, moving_average=None):

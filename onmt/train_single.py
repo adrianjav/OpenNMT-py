@@ -140,7 +140,9 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
         train_steps,
         save_checkpoint_steps=opt.save_checkpoint_steps,
         valid_iter=valid_iter,
-        valid_steps=opt.valid_steps)
+        valid_steps=opt.valid_steps,
+        training_time=opt.training_time
+    )
 
     if trainer.report_manager.tensorboard_writer is not None:
         trainer.report_manager.tensorboard_writer.close()
