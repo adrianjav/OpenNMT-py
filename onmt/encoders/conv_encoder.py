@@ -1,0 +1,124 @@
+import math
+import torch
+import torch.nn as nn
+from torch.nn.utils import weight_norm
+from onmt.encoders.encoder import EncoderBase
+
+
+def reset_parameters(module, gain):
+    for name, param in module.named_parameters():
+        if 'bias' in name:
+            nn.init.constant_(param, 0.0)
+        elif 'weight' in name:
+            nn.init.xavier_uniform_(param, gain=nn.init.calculate_gain(gain))
+
+
+class InitialWeights(nn.Module):
+    def __init__(self, hidden_size, num_linear_hidden, lstm_layers):
+        super(InitialWeights, self).__init__()
+        self.lstm_layers = lstm_layers
+
+        self.net = nn.Sequential(
+            nn.Linear(1, num_linear_hidden), nn.LeakyReLU(),
+            nn.Linear(num_linear_hidden, num_linear_hidden), nn.LeakyReLU(),
+            nn.Linear(num_linear_hidden, hidden_size * 2 * lstm_layers)
+        )
+
+        reset_parameters(self, 'leaky_relu')
+
+    def forward(self, feats):
+        batch_size = feats.size(0)
+        feats = feats.contiguous().view(batch_size, -1, 1, 1).mean(dim=1)
+        out = self.net(feats).chunk(2, dim=2)
+        out = tuple(x.view(batch_size, self.lstm_layers, -1).transpose(0, 1).contiguous() for x in out)
+        return out
+
+
+class Chomp(nn.Module):
+    def __init__(self, chomp_size, right=True):
+        super(Chomp, self).__init__()
+        self.chomp_size = chomp_size
+        self.right = right
+
+    def forward(self, x):
+        return x[..., :-self.chomp_size] if self.right else x[..., self.chomp_size:]
+
+
+class Conv2d(nn.Module):
+    def __init__(self, input_size, feats_size, kernel_size, receptive_field, dropout):
+        super(Conv2d, self).__init__()
+        self.input_size = input_size
+        self.feats_size = feats_size
+        self.receptive_field = receptive_field
+        self.dropout = dropout
+
+        num_layers = max(1, int(math.ceil(math.log2(receptive_field / (kernel_size - 1) + 1) - 1)))
+        layers = [
+            weight_norm(nn.Conv2d(1, feats_size, kernel_size=(input_size, kernel_size),
+                                  padding=(0, (kernel_size - 1))))
+        ]
+
+        for i in range(1, num_layers):
+            layers += [
+                nn.LeakyReLU(),
+                nn.Dropout(dropout),
+                weight_norm(nn.Conv2d(feats_size, feats_size, kernel_size=(1, kernel_size),
+                                      padding=(0, (kernel_size - 1) * 2**i), dilation=(1, 2**i)))
+            ]
+
+        self.net = nn.Sequential(*layers)
+        reset_parameters(self, 'conv2d')
+
+    def forward(self, input):
+        return self.net(input.unsqueeze(dim=1)).squeeze(dim=2)
+
+
+class FeatureExtractor(nn.Module):
+    def __init__(self, input_size, feats_size, kernel_size, receptive_field, dropout):
+        super(FeatureExtractor, self).__init__()
+        self.input_size = input_size
+        self.dropout = dropout
+        assert feats_size % 2 == 0, "the number of features has to be an even number"
+
+        self.conv = Conv2d(input_size, feats_size, kernel_size, receptive_field, dropout)
+
+    def forward(self, input):
+        return self.conv(input)  #.unsqueeze(dim=1)
+
+
+class ConvEncoder(EncoderBase):
+    def __init__(self, receptive_field, hidden_size, kernel_width, rnn_layers, dropout, embeddings):
+        super(ConvEncoder, self).__init__()
+        input_size = embeddings.embedding_size
+
+        self.embeddings = embeddings
+        self.linear = nn.Linear(input_size, hidden_size)
+
+        self.cfe = FeatureExtractor(hidden_size, hidden_size, kernel_width, receptive_field, dropout)
+        self.init_decoder = InitialWeights(hidden_size, 256, rnn_layers)  # TODO not hardcode the parameters
+
+    @classmethod
+    def from_opt(cls, opt, embeddings):
+        """Alternate constructor."""
+        return cls(
+            opt.receptive_field,
+            opt.enc_rnn_size,
+            opt.cnn_kernel_width,
+            opt.enc_layers,
+            opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
+            embeddings)
+
+    def forward(self, src, lengths=None):
+        self._check_args(src, lengths)  # src l x b x v
+
+        emb = self.embeddings(src)
+        # s_len, batch, emb_dim = emb.size()
+
+        emb = emb.transpose(0, 1).contiguous()
+        emb_remap = self.linear(emb).transpose(1, 2)
+        out = self.cfe(emb_remap)
+
+        encoder_final = self.init_decoder(emb_remap.unsqueeze(1))
+        out = out.squeeze(1).transpose(1, 2).transpose(0, 1).contiguous()
+
+        return encoder_final, out, lengths
