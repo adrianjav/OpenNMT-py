@@ -37,7 +37,8 @@ void init(){
 int main(int argc, char **argv){
     init();
     cout << "Leyendo fichero " << string(argv[1]) << "\n";
-    std::srand ( unsigned ( std::time(0) ) );
+//    std::srand ( unsigned ( std::time(0) ) );
+    std::srand ( 7u );
 
     ifstream in(argv[1]);
     int size = atoi(argv[2]);

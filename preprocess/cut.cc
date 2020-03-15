@@ -76,7 +76,8 @@ int main(int argc, char **argv){
 
     // REAL [1] "0.9 :  126"
 
-    uint max_size = 252; // 126; // percentile 0.9
+//    uint max_size = 126; // percentile 0.9
+    uint max_size = 252; // percentile 0.9
 
     for(auto i = 1u; i < argc; i++){
         cout << "Leyendo fichero " << string(argv[i]) << "\n";

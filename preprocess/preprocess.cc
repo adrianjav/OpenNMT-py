@@ -31,7 +31,7 @@ map<string, wwstring> special_symbols2{
     {"<self>", {U"<self>"}},
     {"sil", {U"sil"}},
     {" ", {U" "}},
-    {"space", {U"space "}},
+    {"space", {U" "}},
     {"\n", {U"\n"}},
     {"\"", {U"\""}},
     {"\",\"", {U"\",\""}},
@@ -69,6 +69,7 @@ iterator advance_token(const string &line, iterator &pos, bool found){
 
 [[nodiscard]]
 string intercalate(const string &word){
+   return word;
    string result;
    auto pos = word.begin();
    while(pos != word.end()){
@@ -114,9 +115,9 @@ bool take_token(const string &line, string &before, string &after){
     if(after.size() > 0)
         after += special_symbols_utf8["space"];
 
-    if(other_word == special_symbols_utf8["<self>"] || other_word == special_symbols_utf8["sil"])
-        after += intercalate(word);
-    else
+//    if(other_word == special_symbols_utf8["<self>"] || other_word == special_symbols_utf8["sil"])
+//        after += intercalate(word);
+//    else
         after += intercalate(other_word);
 
 
