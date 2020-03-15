@@ -1,5 +1,11 @@
 #!/bin/bash
 
+mkdir -p outputs/text-norm/
+for i in results models logs predictions; do
+	mkdir -p outputs/text-norm/${i}/char
+	mkdir -p outputs/text-norm/${i}/words
+done
+
 for type in char words; do
 	for encoder in cfe conv brnn; do
 		for seed in $(seq 1 5); do
